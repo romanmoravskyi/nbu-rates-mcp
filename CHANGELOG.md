@@ -63,6 +63,17 @@ output fields are the public API: removing or renaming any of them is a breaking
   each keep-alive connection as its response completes), then exits with status 0. A second signal
   exits at once (#9).
 
+### Fixed
+
+- A malformed `X-Forwarded-Proto` or `Host` header (for example `X-Forwarded-Proto: a b`) no longer
+  makes every route, including `/health`, answer 500. Routing uses only the request path; a request
+  target that is not a path, `*` or an `http(s)` URL gets 400
+  ([#14](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/14)).
+- The `GET /` page no longer reflects unvalidated headers: `X-Forwarded-Proto` is honoured only as
+  `http` or `https` (anything else means `http`), a `Host` that is not a valid host and port falls
+  back to `localhost`, `X-Forwarded-Host` is ignored, and the page is sent with
+  `Vary: Host, X-Forwarded-Proto` so a shared cache cannot serve one client's origin to everyone.
+
 ## [0.1.0] - 2026-10-21
 
 ### Added

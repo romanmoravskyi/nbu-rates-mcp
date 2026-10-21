@@ -7,6 +7,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { NbuClient } from "./nbu.js";
+import { publicOrigin, requestPath } from "./request.js";
 import { registerTools } from "./tools.js";
 
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
@@ -108,12 +109,12 @@ export function createApp(options: AppOptions = {}): Server {
 
   return createServer(async (req, res) => {
     try {
-      const proto =
-        String(req.headers["x-forwarded-proto"] ?? "http")
-          .split(",")[0]
-          ?.trim() || "http";
-      const url = new URL(req.url ?? "/", `${proto}://${req.headers.host ?? "localhost"}`);
-      if (url.pathname === "/mcp") {
+      const path = requestPath(req.url);
+      if (path === undefined) {
+        send(res, 400, "Bad Request");
+        return;
+      }
+      if (path === "/mcp") {
         if (!hostAllowed(req, allowedHosts)) {
           sendJsonRpcError(res, 403, "Forbidden: Host or Origin not allowed. See ALLOWED_HOSTS.");
           return;
@@ -125,11 +126,14 @@ export function createApp(options: AppOptions = {}): Server {
         send(res, 405, "Method Not Allowed", { allow: "GET, HEAD" });
         return;
       }
-      if (url.pathname === "/") {
-        send(res, 200, homePage(url.origin), { "cache-control": "public, max-age=300" });
+      if (path === "/") {
+        send(res, 200, homePage(publicOrigin(req.headers)), {
+          "cache-control": "public, max-age=300",
+          vary: "Host, X-Forwarded-Proto",
+        });
         return;
       }
-      if (url.pathname === "/health") {
+      if (path === "/health") {
         send(res, 200, JSON.stringify({ ok: true }), { "content-type": "application/json" });
         return;
       }
