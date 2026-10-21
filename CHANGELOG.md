@@ -13,22 +13,8 @@ output fields are the public API: removing or renaming any of them is a breaking
   launch the server themselves, such as Claude Code and Claude Desktop. Logs go to stderr. The
   HTTP server stays the default. Clients should spawn `node dist/index.js --stdio` directly (after
   `npm run build`): `npm run` prints a banner to stdout, which corrupts the protocol stream, so
-  `npm run start:stdio` is only for trying the server by hand (README and connector guide).
-
-### Fixed
-
-- `npm run start:stdio` now builds `dist/` first (`prestart:stdio`, output to stderr), so it works
-  on a fresh clone instead of failing with `Cannot find module dist/index.js`.
-
-### Fixed
-
-- Requests without a `date` no longer return the previous day's rates for up to an hour after
-  Kyiv midnight: "today" is now resolved to the Kyiv date before the NBU lookup and cached under
-  that date (#5).
-- A timeout or connection reset while reading the NBU response body is now reported as an NBU
-  upstream error instead of "Unexpected error" (#10).
-- An empty NBU answer for a past date now says NBU has no rates for that date, instead of
-  claiming the rates are not published yet (#16).
+  `npm run start:stdio` is only for trying the server by hand (README and connector guide). It
+  builds `dist/` first (`prestart:stdio`, output to stderr), so it also works on a fresh clone.
 
 ### Changed
 
@@ -46,25 +32,29 @@ output fields are the public API: removing or renaming any of them is a breaking
 
 ### Fixed
 
-- `list_rates` with `currencies: []` returns all rates instead of none.
-- `convert` UAH to UAH no longer fails when NBU is down or has not published rates for the date.
+- Requests without a `date` no longer return the previous day's rates for up to an hour after
+  Kyiv midnight: "today" is now resolved to the Kyiv date before the NBU lookup and cached under
+  that date ([#5](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/5)).
 - Today's Kyiv date is built from date parts instead of relying on the `en-CA` locale pattern,
   and falls back to the legacy `Europe/Kiev` zone name on runtimes with older tzdata.
-
-### Fixed
-
+- A timeout or connection reset while reading the NBU response body is now reported as an NBU
+  upstream error instead of "Unexpected error"
+  ([#10](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/10)).
+- An empty NBU answer for a past date now says NBU has no rates for that date, instead of
+  claiming the rates are not published yet
+  ([#16](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/16)).
+- `list_rates` with `currencies: []` returns all rates instead of none.
+- `convert` UAH to UAH no longer fails when NBU is down or has not published rates for the date.
 - An empty or blank `HOST` or `PORT` (for example `HOST=` from an env file) now counts as unset, so
-  the server keeps its `127.0.0.1:8787` default instead of binding every interface (#8).
+  the server keeps its `127.0.0.1:8787` default instead of binding every interface
+  ([#8](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/8)).
 - An invalid `PORT` (not a whole number from 0 to 65535, e.g. `PORT=abc`) now exits with a readable
   message and status 1 instead of crashing with `ERR_SOCKET_BAD_PORT`; a failed `listen` (port in
-  use, unknown host) does the same (#8).
+  use, unknown host) does the same ([#8](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/8)).
 - Graceful shutdown on `SIGTERM`/`SIGINT` no longer resets requests that are still running: the
   server stops accepting connections, lets in-flight requests finish for up to 5 seconds (closing
   each keep-alive connection as its response completes), then exits with status 0. A second signal
-  exits at once (#9).
-
-### Fixed
-
+  exits at once ([#9](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/9)).
 - A malformed `X-Forwarded-Proto` or `Host` header (for example `X-Forwarded-Proto: a b`) no longer
   makes every route, including `/health`, answer 500. Routing uses only the request path; a request
   target that is not a path, `*` or an `http(s)` URL gets 400
