@@ -12,12 +12,20 @@ updates:
         patterns: ["@modelcontextprotocol/*", "zod"]
       dev-tooling:
         patterns: ["typescript", "vitest", "@biomejs/biome", "tsx", "@types/node"]
+    ignore:
+      # The project targets Node 22: keep @types/node on 22.x until we move the runtime.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: monthly
     commit-message:
       prefix: build
+    ignore:
+      # Stay on the node:22 line (engines >=22, CI on 22); minor and patch bumps still come through.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

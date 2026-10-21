@@ -14,10 +14,17 @@ No accounts or API keys are needed to develop, test or host your own copy.
 
 ## Branches and pull requests
 
+We use GitHub Flow: `main` is the only long-lived branch and is always releasable. It is
+protected, so every change (maintainers' included) lands through a pull request.
+
 1. Open an issue first for anything beyond a small fix, so we can agree on the shape.
-2. Branch from `main`: `feat/short-name`, `fix/short-name`, `docs/short-name`.
+2. Branch from `main`: `feat/short-name`, `fix/short-name`, `docs/short-name`, `chore/short-name`.
 3. Keep PRs focused. Fill in the PR template, including how you verified the change.
-4. CI must be green. A maintainer reviews and squash-merges.
+4. Give the PR a Conventional Commits title (see below): it becomes the commit message on `main`.
+5. CI (`Typecheck, lint, test, build`) must be green, the branch up to date with `main`, and review
+   threads resolved. A maintainer then squash-merges; the branch is deleted automatically.
+
+Direct pushes, force pushes and deleting `main` are blocked, and squash is the only merge method.
 
 ## Commit messages
 
@@ -48,13 +55,16 @@ major version bump.
 
 ## Releasing (maintainers)
 
-1. Move the `Unreleased` entries in `CHANGELOG.md` under a new version heading with today's date,
+1. Branch from an up-to-date `main`: `git switch -c chore/release-vX.Y.Z origin/main`.
+2. Move the `Unreleased` entries in `CHANGELOG.md` under a new version heading with today's date,
    and update the compare links at the bottom.
-2. Bump `version` in `package.json` (`npm version <major|minor|patch> --no-git-tag-version`).
+3. Bump `version` in `package.json` (`npm version <major|minor|patch> --no-git-tag-version`).
    The version is shown on `GET /` and in the MCP server info.
-3. Commit: `chore(release): vX.Y.Z`.
-4. Tag and push: `git tag vX.Y.Z && git push origin main --tags`.
-5. Create a GitHub release from the tag with the CHANGELOG section as notes. If you host an
+4. Commit, push the branch and open a PR titled `chore(release): vX.Y.Z`. Squash-merge it once CI
+   is green.
+5. Tag the merge commit on `main` and push the tag (tags are not affected by branch protection):
+   `git switch main && git pull --ff-only && git tag vX.Y.Z && git push origin vX.Y.Z`.
+6. Create a GitHub release from the tag with the CHANGELOG section as notes. If you host an
    instance, rebuild and redeploy the Docker image or `dist/` build.
 
 ## Code of Conduct

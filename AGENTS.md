@@ -61,6 +61,8 @@ Dockerfile        multi-stage node:22-alpine image
 - Add a hosting-provider-specific dependency or config; the server must stay runnable on any Node host.
 - Skip updating `CHANGELOG.md` (under `Unreleased`) for user-visible changes.
 - Deploy anywhere or push from an agent session unless the maintainer asked for it.
+- Commit to or push `main`. It is protected (PR required, CI must pass, squash-only); work on a
+  `feat/`, `fix/`, `docs/` or `chore/` branch and open a PR with a Conventional Commits title.
 
 ## Verify a change end to end
 
