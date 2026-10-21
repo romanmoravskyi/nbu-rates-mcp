@@ -44,7 +44,18 @@ Keep it running while you use it from Claude. `GET http://localhost:8787/health`
 
 ## Add to Claude
 
-### Claude Code
+### Claude Code (stdio, recommended locally)
+
+Claude Code launches the process itself per session; no server to keep running.
+
+```bash
+npm ci && npm run build
+claude mcp add -s user nbu-rates -- node /path/to/nbu-rates-mcp/dist/index.js --stdio
+```
+
+After a code change: `npm run build`. Nothing to re-register.
+
+### Claude Code (HTTP, for a server that is already running)
 
 ```bash
 claude mcp add --transport http nbu-rates http://localhost:8787/mcp
@@ -52,16 +63,15 @@ claude mcp add --transport http nbu-rates http://localhost:8787/mcp
 
 ### Claude Desktop (local MCP config)
 
-Claude Desktop's config file launches local commands, so bridge to the HTTP server with
-[`mcp-remote`](https://www.npmjs.com/package/mcp-remote). In **Settings → Developer → Edit Config**
-(`claude_desktop_config.json`):
+Claude Desktop's config file launches local commands, so point it at the stdio entry (build first
+with `npm run build`). In **Settings → Developer → Edit Config** (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "nbu-rates": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8787/mcp"]
+      "command": "node",
+      "args": ["/path/to/nbu-rates-mcp/dist/index.js", "--stdio"]
     }
   }
 }

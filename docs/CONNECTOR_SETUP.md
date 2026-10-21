@@ -28,6 +28,15 @@ Transport: Streamable HTTP. Authentication: none. Keep the server running while 
 
 ## Claude Code
 
+Two ways. **stdio** needs no running server: Claude Code starts and stops the process per session.
+
+```bash
+npm ci && npm run build
+claude mcp add -s user nbu-rates -- node /path/to/nbu-rates-mcp/dist/index.js --stdio
+```
+
+**HTTP** when a server is already running (`npm start`, Docker, or a process manager):
+
 ```bash
 claude mcp add --transport http nbu-rates http://localhost:8787/mcp
 ```
@@ -43,8 +52,9 @@ Inside a session, `/mcp` lists the server and its three tools.
 
 ## Claude Desktop (local MCP config)
 
-Claude Desktop's `claude_desktop_config.json` starts local processes, so use
-[`mcp-remote`](https://www.npmjs.com/package/mcp-remote) as a bridge to the HTTP endpoint.
+Claude Desktop's `claude_desktop_config.json` starts local processes, so use the stdio entry
+(after `npm run build`). To reach an already-running HTTP server instead, replace the command with
+`npx -y mcp-remote http://localhost:8787/mcp`.
 
 1. Open Claude Desktop → **Settings → Developer → Edit Config**.
 2. Add:
@@ -53,8 +63,8 @@ Claude Desktop's `claude_desktop_config.json` starts local processes, so use
 {
   "mcpServers": {
     "nbu-rates": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8787/mcp"]
+      "command": "node",
+      "args": ["/path/to/nbu-rates-mcp/dist/index.js", "--stdio"]
     }
   }
 }

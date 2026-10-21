@@ -7,6 +7,12 @@ output fields are the public API: removing or renaming any of them is a breaking
 
 ## [Unreleased]
 
+### Added
+
+- stdio transport: `node dist/index.js --stdio` (or `MCP_TRANSPORT=stdio`, `npm run start:stdio`)
+  for clients that launch the server themselves, such as Claude Code and Claude Desktop. Logs go
+  to stderr. The HTTP server stays the default.
+
 ## [0.1.0] - 2026-10-21
 
 ### Added

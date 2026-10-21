@@ -66,6 +66,8 @@ yet" error.
   for development.
 - MCP: official `@modelcontextprotocol/sdk`, `McpServer` + `StreamableHTTPServerTransport` in
   stateless mode, a new pair per request.
+- stdio: `--stdio` flag or `MCP_TRANSPORT=stdio` runs `StdioServerTransport` instead of HTTP, for
+  clients that spawn the process (Claude Code, Claude Desktop); logs to stderr only.
 - HTTP: `node:http`. Routes: `POST /mcp` (MCP), `GET /` (plain-text info page with name, version,
   tool list and endpoint), `GET /health` (`{"ok":true}`). `GET`/`DELETE /mcp` return 405.
 - Configuration by environment: `PORT` (default 8787), `HOST` (default `127.0.0.1`),
@@ -92,14 +94,15 @@ nbu-rates-mcp/
     ADR-001-transport.md
     CONNECTOR_SETUP.md        # Claude Code, Claude Desktop, hosted instance + claude.ai
   src/
-    index.ts                  # process entry: env config, listen, graceful shutdown
+    index.ts                  # process entry: --stdio switch, env config, listen, graceful shutdown
+    stdio.ts                  # MCP over stdin/stdout
     server.ts                 # node:http routing, Host/Origin check, McpServer per request
     tools.ts                  # tool definitions (zod schemas) and handlers
     nbu.ts                    # upstream client, TTLs, types, error classes
     cache.ts                  # in-memory TTL cache
     validate.ts               # date/currency validation helpers
   test/
-    cache.test.ts, nbu.test.ts, server.test.ts, tools.test.ts, validate.test.ts, fixtures.ts
+    cache.test.ts, nbu.test.ts, server.test.ts, stdio.test.ts, tools.test.ts, validate.test.ts, fixtures.ts
   Dockerfile, .dockerignore
   README.md, AGENTS.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, CHANGELOG.md, LICENSE
   package.json, tsconfig.json, tsconfig.build.json, biome.json, vitest.config.ts, .gitignore, .editorconfig
