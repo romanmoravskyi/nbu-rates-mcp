@@ -55,6 +55,11 @@ claude mcp add -s user nbu-rates -- node /path/to/nbu-rates-mcp/dist/index.js --
 
 After a code change: `npm run build`. Nothing to re-register.
 
+Point MCP clients at `node dist/index.js --stdio` directly, not at `npm run start:stdio`. In stdio
+mode stdout is the JSON-RPC channel, and `npm run` first prints its `> nbu-rates-mcp@… start:stdio`
+banner there, which strict clients reject. `npm run start:stdio` also rebuilds `dist/` first, so
+it is only for trying the server by hand.
+
 ### Claude Code (HTTP, for a server that is already running)
 
 ```bash
