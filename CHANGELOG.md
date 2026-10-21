@@ -20,6 +20,16 @@ output fields are the public API: removing or renaming any of them is a breaking
 - `npm run start:stdio` now builds `dist/` first (`prestart:stdio`, output to stderr), so it works
   on a fresh clone instead of failing with `Cannot find module dist/index.js`.
 
+### Fixed
+
+- Requests without a `date` no longer return the previous day's rates for up to an hour after
+  Kyiv midnight: "today" is now resolved to the Kyiv date before the NBU lookup and cached under
+  that date (#5).
+- A timeout or connection reset while reading the NBU response body is now reported as an NBU
+  upstream error instead of "Unexpected error" (#10).
+- An empty NBU answer for a past date now says NBU has no rates for that date, instead of
+  claiming the rates are not published yet (#16).
+
 ## [0.1.0] - 2026-10-21
 
 ### Added

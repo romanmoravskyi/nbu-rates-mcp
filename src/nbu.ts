@@ -40,12 +40,15 @@ export interface NbuClientOptions {
 export const TTL_CURRENT_SECONDS = 60 * 60; // today / tomorrow: rates can still appear
 export const TTL_PAST_SECONDS = 24 * 60 * 60; // past dates never change
 
-export function buildUrl(date?: string): string {
-  return date ? `${NBU_API_URL}?date=${toNbuQueryDate(date)}&json` : `${NBU_API_URL}?json`;
+/** Always dated: the undated `?json` URL is never used, so cache keys roll over at Kyiv midnight. */
+export function buildUrl(date: string): string {
+  return `${NBU_API_URL}?date=${toNbuQueryDate(date)}&json`;
 }
 
-export function ttlFor(date: string | undefined, now: Date): number {
-  return !date || date >= kyivToday(now) ? TTL_CURRENT_SECONDS : TTL_PAST_SECONDS;
+const reason = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
+export function ttlFor(date: string, now: Date): number {
+  return date >= kyivToday(now) ? TTL_CURRENT_SECONDS : TTL_PAST_SECONDS;
 }
 
 /** Validate and normalise the raw upstream payload. */
@@ -84,10 +87,10 @@ export class NbuClient {
 
   /** All official rates for a date (YYYY-MM-DD, already validated), or today when omitted. */
   async getRates(date?: string): Promise<Rate[]> {
-    const url = buildUrl(date);
+    const day = date ?? kyivToday(this.#now());
+    const url = buildUrl(day);
     const cached = this.#cache?.get(url);
     if (cached) return cached;
-
     let response: Response;
     try {
       response = await this.#fetch(url, {
@@ -95,12 +98,17 @@ export class NbuClient {
         signal: AbortSignal.timeout(this.#timeoutMs),
       });
     } catch (err) {
-      throw new UpstreamError(`Could not reach the NBU API: ${(err as Error).message}`);
+      throw new UpstreamError(`Could not reach the NBU API: ${reason(err)}`);
     }
     if (!response.ok) {
       throw new UpstreamError(`NBU API responded with HTTP ${response.status}. Try again later.`);
     }
-    const body = await response.text();
+    let body: string;
+    try {
+      body = await response.text();
+    } catch (err) {
+      throw new UpstreamError(`Could not read the NBU API response: ${reason(err)}`);
+    }
     let payload: unknown;
     try {
       payload = JSON.parse(body);
@@ -108,25 +116,27 @@ export class NbuClient {
       throw new UpstreamError("NBU API returned a response that is not valid JSON.");
     }
     const rates = parseRates(payload);
-
     // Only cache non-empty answers: an empty list for tomorrow may fill in later.
     if (this.#cache && rates.length > 0) {
-      this.#cache.set(url, rates, ttlFor(date, this.#now()));
+      this.#cache.set(url, rates, ttlFor(day, this.#now()));
     }
     return rates;
   }
 
   /** All rates for a date, failing with a helpful message when NBU has none. */
   async getRatesOrThrow(date?: string): Promise<Rate[]> {
-    const rates = await this.getRates(date);
-    if (rates.length === 0) {
+    const today = kyivToday(this.#now()); // resolved once, so the message matches the query
+    const rates = await this.getRates(date ?? today);
+    if (rates.length > 0) return rates;
+    if (!date) throw new UserError("NBU returned no rates for today. Try again later.");
+    if (date < today) {
       throw new UserError(
-        date
-          ? `NBU has not published rates for ${date} yet. Rates for the next day usually appear after 15:30 Kyiv time.`
-          : "NBU returned no rates for today. Try again later.",
+        `NBU has no official rates for ${date}. Check the date, or omit it for today's rates.`,
       );
     }
-    return rates;
+    throw new UserError(
+      `NBU has not published rates for ${date} yet. Rates for the next day usually appear after 15:30 Kyiv time.`,
+    );
   }
 
   /** A single currency's rate, or a UserError when NBU does not quote it. */
