@@ -51,6 +51,18 @@ output fields are the public API: removing or renaming any of them is a breaking
 - Today's Kyiv date is built from date parts instead of relying on the `en-CA` locale pattern,
   and falls back to the legacy `Europe/Kiev` zone name on runtimes with older tzdata.
 
+### Fixed
+
+- An empty or blank `HOST` or `PORT` (for example `HOST=` from an env file) now counts as unset, so
+  the server keeps its `127.0.0.1:8787` default instead of binding every interface (#8).
+- An invalid `PORT` (not a whole number from 0 to 65535, e.g. `PORT=abc`) now exits with a readable
+  message and status 1 instead of crashing with `ERR_SOCKET_BAD_PORT`; a failed `listen` (port in
+  use, unknown host) does the same (#8).
+- Graceful shutdown on `SIGTERM`/`SIGINT` no longer resets requests that are still running: the
+  server stops accepting connections, lets in-flight requests finish for up to 5 seconds (closing
+  each keep-alive connection as its response completes), then exits with status 0. A second signal
+  exits at once (#9).
+
 ## [0.1.0] - 2026-10-21
 
 ### Added
