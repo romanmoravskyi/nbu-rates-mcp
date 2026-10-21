@@ -30,6 +30,27 @@ output fields are the public API: removing or renaming any of them is a breaking
 - An empty NBU answer for a past date now says NBU has no rates for that date, instead of
   claiming the rates are not published yet (#16).
 
+### Changed
+
+- `convert` output precision: `result` is still rounded to 2 decimals and `rate_used` to 6 when
+  the value is 1 or more, but values below 1 now keep at least 4 (`result`) or 6 (`rate_used`)
+  significant digits instead of collapsing to 0. For example, 100 UAH to XAU now gives
+  `result: 0.0005882` instead of `0`. Field names and types are unchanged (both are numbers).
+- `get_rate` and `list_rates` treat UAH like `convert` does: as the base currency with
+  `rate_uah: 1`. `get_rate {currency: "UAH"}` returns that instead of an error, and
+  `list_rates` includes a UAH row when UAH is named in `currencies` (the unfiltered list is
+  unchanged). Neither needs NBU to be reachable for UAH alone. The `get_rate` summary for UAH
+  says "base currency, not an NBU quote".
+- `convert` input validation is stricter: a negative `amount` is now rejected with a validation
+  error. It used to return a negative `result`. The field name and type are unchanged.
+
+### Fixed
+
+- `list_rates` with `currencies: []` returns all rates instead of none.
+- `convert` UAH to UAH no longer fails when NBU is down or has not published rates for the date.
+- Today's Kyiv date is built from date parts instead of relying on the `en-CA` locale pattern,
+  and falls back to the legacy `Europe/Kiev` zone name on runtimes with older tzdata.
+
 ## [0.1.0] - 2026-10-21
 
 ### Added

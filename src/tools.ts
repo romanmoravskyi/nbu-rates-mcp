@@ -2,7 +2,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { type NbuClient, UpstreamError } from "./nbu.js";
-import { normalizeCurrency, round, UserError, validateDate } from "./validate.js";
+import { kyivToday, normalizeCurrency, roundAdaptive, UserError, validateDate } from "./validate.js";
 
 const currency = z.string().describe("ISO 4217 currency code, case-insensitive, e.g. USD, eur, PLN.");
 const date = z
@@ -16,7 +16,7 @@ export const listRatesInput = z.object({
   currencies: z.array(z.string()).optional().describe('Optional filter, e.g. ["USD", "EUR"].'),
 });
 export const convertInput = z.object({
-  amount: z.number().finite().describe("Amount to convert, in units of `from`."),
+  amount: z.number().finite().nonnegative().describe("Amount to convert, in units of `from` (0 or more)."),
   from: currency.describe("Source currency (ISO 4217). UAH is allowed."),
   to: currency.describe("Target currency (ISO 4217). UAH is allowed."),
   date,
@@ -24,27 +24,39 @@ export const convertInput = z.object({
 
 const opt = (d: string | undefined) => (d === undefined ? undefined : validateDate(d));
 
+/**
+ * UAH is the base currency: NBU never lists it, but its rate is 1 UAH per 1 UAH by definition.
+ * All tools treat it the same way, without needing NBU to be reachable.
+ */
+const UAH = { currency: "UAH", rate_uah: 1, name_uk: "Українська гривня" } as const;
+
 export async function getRate(client: NbuClient, args: z.infer<typeof getRateInput>) {
   const code = normalizeCurrency(args.currency);
-  const rate = await client.getRate(code, opt(args.date));
+  const day = opt(args.date);
+  const rate = code === UAH.currency ? { ...UAH, date: day ?? kyivToday() } : await client.getRate(code, day);
   const data = { currency: rate.currency, rate_uah: rate.rate_uah, date: rate.date, name_uk: rate.name_uk };
-  return { data, summary: `1 ${data.currency} = ${data.rate_uah} UAH (NBU official rate, ${data.date})` };
+  const source = code === UAH.currency ? "base currency, not an NBU quote" : "NBU official rate";
+  return { data, summary: `1 ${data.currency} = ${data.rate_uah} UAH (${source}, ${data.date})` };
 }
 
 export async function listRates(client: NbuClient, args: z.infer<typeof listRatesInput>) {
-  const wanted = args.currencies?.map(normalizeCurrency);
-  const all = await client.getRatesOrThrow(opt(args.date));
+  // An empty array means "no filter", as MCP clients often send [] for an optional list.
+  const wanted = args.currencies?.length ? args.currencies.map(normalizeCurrency) : undefined;
+  const day = opt(args.date);
+  const onlyUah = wanted?.every((c) => c === UAH.currency) ?? false;
+  const all = onlyUah ? [] : await client.getRatesOrThrow(day);
   if (wanted) {
-    const missing = wanted.filter((c) => c !== "UAH" && !all.some((r) => r.currency === c));
+    const missing = wanted.filter((c) => c !== UAH.currency && !all.some((r) => r.currency === c));
     if (missing.length > 0) {
       throw new UserError(`NBU does not publish official rates for: ${missing.join(", ")}.`);
     }
   }
   const rates = all
     .filter((r) => !wanted || wanted.includes(r.currency))
-    .map(({ currency, rate_uah, name_uk }) => ({ currency, rate_uah, name_uk }))
-    .sort((a, b) => a.currency.localeCompare(b.currency));
-  const data = { date: all[0]?.date ?? "", rates };
+    .map(({ currency, rate_uah, name_uk }) => ({ currency, rate_uah, name_uk }));
+  if (wanted?.includes(UAH.currency)) rates.push({ ...UAH });
+  rates.sort((a, b) => a.currency.localeCompare(b.currency));
+  const data = { date: all[0]?.date ?? day ?? kyivToday(), rates };
   return { data, summary: `${rates.length} NBU official rates (UAH per 1 unit) for ${data.date}` };
 }
 
@@ -52,9 +64,10 @@ export async function convert(client: NbuClient, args: z.infer<typeof convertInp
   const from = normalizeCurrency(args.from);
   const to = normalizeCurrency(args.to);
   const day = opt(args.date);
-  const rates = await client.getRatesOrThrow(day);
+  // UAH -> UAH needs no NBU rate, so do not fail when NBU is down or has not published yet.
+  const rates = from === UAH.currency && to === UAH.currency ? [] : await client.getRatesOrThrow(day);
   const uahPer = (code: string): number => {
-    if (code === "UAH") return 1;
+    if (code === UAH.currency) return UAH.rate_uah;
     const r = rates.find((x) => x.currency === code);
     if (!r)
       throw new UserError(
@@ -68,9 +81,10 @@ export async function convert(client: NbuClient, args: z.infer<typeof convertInp
     amount: args.amount,
     from,
     to,
-    result: round(args.amount * rateUsed, 2),
-    rate_used: round(rateUsed, 6),
-    date: rates[0]?.date ?? day ?? "",
+    // 2 / 6 decimals, but with at least 4 / 6 significant digits below 1 (e.g. UAH -> XAU).
+    result: roundAdaptive(args.amount * rateUsed, 2, 4),
+    rate_used: roundAdaptive(rateUsed, 6, 6),
+    date: rates[0]?.date ?? day ?? kyivToday(),
   };
   return {
     data,
