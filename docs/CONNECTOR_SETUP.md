@@ -35,6 +35,12 @@ npm ci && npm run build
 claude mcp add -s user nbu-rates -- node /path/to/nbu-rates-mcp/dist/index.js --stdio
 ```
 
+Use `node .../dist/index.js --stdio` as the command, not `npm run start:stdio`. In stdio mode
+stdout carries the JSON-RPC messages, and `npm run` prints a `> nbu-rates-mcp@… start:stdio`
+banner to stdout before the server starts, so the client sees a non-JSON line and may drop the
+connection. It would also rerun the TypeScript build on every launch. Run `npm run build` again
+after pulling changes; keep `npm run start:stdio` for trying the server by hand.
+
 **HTTP** when a server is already running (`npm start`, Docker, or a process manager):
 
 ```bash

@@ -9,9 +9,16 @@ output fields are the public API: removing or renaming any of them is a breaking
 
 ### Added
 
-- stdio transport: `node dist/index.js --stdio` (or `MCP_TRANSPORT=stdio`, `npm run start:stdio`)
-  for clients that launch the server themselves, such as Claude Code and Claude Desktop. Logs go
-  to stderr. The HTTP server stays the default.
+- stdio transport: `node dist/index.js --stdio` (or `MCP_TRANSPORT=stdio`) for clients that
+  launch the server themselves, such as Claude Code and Claude Desktop. Logs go to stderr. The
+  HTTP server stays the default. Clients should spawn `node dist/index.js --stdio` directly (after
+  `npm run build`): `npm run` prints a banner to stdout, which corrupts the protocol stream, so
+  `npm run start:stdio` is only for trying the server by hand (README and connector guide).
+
+### Fixed
+
+- `npm run start:stdio` now builds `dist/` first (`prestart:stdio`, output to stderr), so it works
+  on a fresh clone instead of failing with `Cannot find module dist/index.js`.
 
 ## [0.1.0] - 2026-10-21
 
