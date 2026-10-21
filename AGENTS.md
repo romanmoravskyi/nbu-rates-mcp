@@ -16,7 +16,7 @@ storage, no user data. The only state is an in-memory TTL cache of upstream resp
 | `npm ci` | Install exact dependencies from `package-lock.json` |
 | `npm run dev` | `tsx watch src/index.ts`: MCP at http://localhost:8787/mcp, reloads on save |
 | `npm start` | Build to `dist/`, then `node dist/index.js` on port 8787 (`PORT` overrides) |
-| `npm run start:stdio` | Same server over stdin/stdout (`--stdio`), for clients that spawn the process |
+| `npm run start:stdio` | Build, then the same server over stdin/stdout (`--stdio`), for trying it by hand. MCP clients should spawn `node dist/index.js --stdio` after `npm run build` instead (npm's banner on stdout corrupts the protocol stream) |
 | `npm run build` | `tsc -p tsconfig.build.json` to `dist/` |
 | `npm run check` | `tsc` (src and test) + `biome check` + `vitest run`. Must pass before every commit |
 | `npm run format` | Apply Biome formatting and safe fixes |
@@ -25,9 +25,12 @@ storage, no user data. The only state is an in-memory TTL cache of upstream resp
 ## Layout
 
 ```
-src/index.ts      process entry: --stdio switch; else reads PORT/HOST/ALLOWED_HOSTS, listens, handles signals
+src/index.ts      process entry: --stdio or MCP_TRANSPORT=stdio; else listens with env.ts config, wires signals to shutdown.ts
+src/env.ts        pure parsing of PORT/HOST/ALLOWED_HOSTS; blank counts as unset, bad PORT throws ConfigError
+src/shutdown.ts   graceful shutdown: stop accepting, drain in-flight requests, grace timer, second signal exits
 src/stdio.ts      StdioServerTransport wiring; logs to stderr only (stdout is the protocol channel)
 src/server.ts     node:http routing for /, /health, /mcp; Host/Origin check; McpServer per request
+src/request.ts    validated reads of request target, Host and X-Forwarded-Proto (routing path, public origin)
 src/tools.ts      zod input schemas, tool handlers, MCP result/error shaping, registerTools()
 src/nbu.ts        NBU client: URL building, TTLs, timeouts, payload parsing, error types
 src/cache.ts      tiny in-memory TTL cache with a size cap
