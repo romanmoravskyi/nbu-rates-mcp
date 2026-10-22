@@ -26,7 +26,7 @@ storage, no user data. The only state is an in-memory TTL cache of upstream resp
 
 ```
 src/index.ts      process entry: --stdio or MCP_TRANSPORT=stdio; else listens with env.ts config, wires signals to shutdown.ts
-src/env.ts        pure parsing of PORT/HOST/ALLOWED_HOSTS; blank counts as unset, bad PORT throws ConfigError
+src/env.ts        pure parsing of PORT/NBU_MCP_HOST/HOST/ALLOWED_HOSTS (warnings returned, not logged); loopback and URL helpers
 src/shutdown.ts   graceful shutdown: stop accepting, drain in-flight requests, grace timer, second signal exits
 src/stdio.ts      StdioServerTransport wiring; logs to stderr only (stdout is the protocol channel)
 src/server.ts     node:http routing for /, /health, /mcp; Host/Origin check; McpServer per request

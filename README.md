@@ -39,8 +39,13 @@ Keep it running while you use it from Claude. `GET http://localhost:8787/health`
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | `8787` | TCP port to listen on |
-| `HOST` | `127.0.0.1` | Interface to bind. Use `0.0.0.0` in containers (the Docker image does) |
+| `NBU_MCP_HOST` | `127.0.0.1` | Interface to bind. Use `0.0.0.0` in containers (the Docker image does). Wins over `HOST` |
+| `HOST` | `127.0.0.1` | Fallback for `NBU_MCP_HOST`. Ignored, with a note on stderr, when it is just this machine's hostname (tcsh and some shells export that); set `NBU_MCP_HOST` to bind that name |
 | `ALLOWED_HOSTS` | *(empty)* | Extra comma-separated hostnames accepted in `Host`/`Origin` on `/mcp`, e.g. `nbu.example.com`. `localhost`, `127.0.0.1` and `[::1]` are always allowed; `*` disables the check |
+
+The server has no authentication, so when it is bound to anything other than a loopback address
+(`127.0.0.0/8`, `::1`, `localhost`), including `0.0.0.0` in the Docker image, it prints a warning
+on stderr at startup.
 
 ## Add to Claude
 
@@ -140,10 +145,11 @@ dependencies, runs as the non-root `node` user and has a `/health` healthcheck.
 
 ```bash
 npm ci && npm run build
-HOST=0.0.0.0 PORT=8787 ALLOWED_HOSTS=nbu.example.com node dist/index.js
+NBU_MCP_HOST=0.0.0.0 PORT=8787 ALLOWED_HOSTS=nbu.example.com node dist/index.js
 ```
 
-Most platforms set `PORT` for you; set `HOST=0.0.0.0` so the process accepts outside traffic.
+Most platforms set `PORT` for you; set `NBU_MCP_HOST=0.0.0.0` (or `HOST=0.0.0.0`) so the process
+accepts outside traffic.
 
 ### Behind a reverse proxy
 

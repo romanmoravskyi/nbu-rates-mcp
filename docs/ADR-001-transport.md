@@ -36,8 +36,11 @@ Two HTTP layers were considered on top of the official `@modelcontextprotocol/sd
    `Origin` hostname when a browser sends one, must be `localhost`, `127.0.0.1`, `[::1]` or a name
    listed in `ALLOWED_HOSTS` (`*` disables the check). Non-browser MCP clients send no `Origin`.
    `/` and `/health` are not checked, so platform health probes work on any address.
-5. Bind to `127.0.0.1` by default (`HOST` overrides; the Docker image sets `0.0.0.0`), port 8787
-   by default (`PORT` overrides).
+5. Bind to `127.0.0.1` by default (`NBU_MCP_HOST` overrides, then `HOST`; the Docker image sets
+   `NBU_MCP_HOST=0.0.0.0`), port 8787 by default (`PORT` overrides). A `HOST` equal to the
+   machine's hostname is ignored with a note on stderr, because shells such as tcsh export it and
+   it would otherwise bind a network interface by accident. Binding a non-loopback address prints
+   a warning on stderr, since the server has no authentication.
 6. Fetch the **all-currencies** NBU endpoint for a date (`?date=YYYYMMDD&json`) and filter locally
    instead of calling `?valcode=XXX`. One cache entry per date then serves `get_rate`,
    `list_rates` and `convert` (which needs two currencies) alike, and upstream traffic stays tiny.

@@ -15,6 +15,11 @@ output fields are the public API: removing or renaming any of them is a breaking
   `npm run build`): `npm run` prints a banner to stdout, which corrupts the protocol stream, so
   `npm run start:stdio` is only for trying the server by hand (README and connector guide). It
   builds `dist/` first (`prestart:stdio`, output to stderr), so it also works on a fresh clone.
+- `NBU_MCP_HOST` sets the interface to bind and wins over `HOST`, which still works as a fallback
+  ([#27](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/27)).
+- A warning on stderr at startup when the HTTP server is bound to a non-loopback address (anything
+  but `127.0.0.0/8`, `::1` or `localhost`, so also `0.0.0.0` in the Docker image): the server is
+  then reachable from other machines and has no authentication.
 
 ### Changed
 
@@ -29,6 +34,8 @@ output fields are the public API: removing or renaming any of them is a breaking
   says "base currency, not an NBU quote".
 - `convert` input validation is stricter: a negative `amount` is now rejected with a validation
   error. It used to return a negative `result`. The field name and type are unchanged.
+- The Docker image sets `NBU_MCP_HOST=0.0.0.0` instead of `HOST=0.0.0.0`. Because `NBU_MCP_HOST`
+  wins, `docker run -e HOST=...` no longer changes the bind address; use `-e NBU_MCP_HOST=...`.
 
 ### Fixed
 
@@ -69,6 +76,13 @@ output fields are the public API: removing or renaming any of them is a breaking
   as `app:8787`, `/mcp` answers 403 even with `ALLOWED_HOSTS` set. README "Behind a reverse proxy"
   and a connector-guide troubleshooting row
   ([#28](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/28)).
+- A `HOST` inherited from the shell (tcsh exports `HOST=<machine name>`) no longer binds a network
+  interface instead of `127.0.0.1`: a `HOST` equal to this machine's hostname (full or short name,
+  any case) is ignored with a note on stderr. Set `NBU_MCP_HOST` to bind that name on purpose
+  ([#27](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/27)).
+- The startup log brackets IPv6 hosts, e.g. `http://[::1]:8787/mcp` instead of `http://::1:8787/mcp`
+  ([#31](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/31)). A bracketed bind address such
+  as `NBU_MCP_HOST=[::1]` is now accepted instead of failing with `ENOTFOUND`.
 
 ## [0.1.0] - 2026-10-21
 
