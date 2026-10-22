@@ -1,9 +1,9 @@
 /**
- * Process entry. Default: HTTP server (PORT, HOST, ALLOWED_HOSTS from the environment).
+ * Process entry. Default: HTTP server (PORT, NBU_MCP_HOST or HOST, ALLOWED_HOSTS from the environment).
  * With `--stdio` or MCP_TRANSPORT=stdio: MCP over stdin/stdout for clients that launch the process.
  */
 import type { AddressInfo } from "node:net";
-import { ConfigError, readListenConfig } from "./env.js";
+import { ConfigError, exposureWarning, mcpUrl, readListenConfig, urlHost } from "./env.js";
 import { createApp, DEFAULT_ALLOWED_HOSTS, SERVER_NAME, VERSION } from "./server.js";
 import { gracefulShutdown } from "./shutdown.js";
 import { runStdio } from "./stdio.js";
@@ -19,22 +19,24 @@ if (process.argv.includes("--stdio") || process.env.MCP_TRANSPORT === "stdio") {
     console.error(error.message);
     process.exit(1);
   }
-  const { port, host, extraAllowedHosts } = config;
+  const { port, host, extraAllowedHosts, warnings } = config;
+  for (const warning of warnings) console.error(warning);
 
   const app = createApp({ allowedHosts: [...DEFAULT_ALLOWED_HOSTS, ...extraAllowedHosts] });
 
   // Startup only: a failed listen (port in use, unknown host) exits with a readable message.
   const onListenError = (error: Error): void => {
-    console.error(`Cannot listen on ${host}:${port}: ${error.message}`);
+    console.error(`Cannot listen on ${urlHost(host)}:${port}: ${error.message}`);
     process.exit(1);
   };
   app.once("error", onListenError);
 
   app.listen(port, host, () => {
     app.off("error", onListenError);
-    const shown = host === "0.0.0.0" || host === "::" ? "localhost" : host;
-    const actualPort = (app.address() as AddressInfo).port;
-    console.log(`${SERVER_NAME} v${VERSION} listening on http://${shown}:${actualPort}/mcp`);
+    const bound = app.address() as AddressInfo;
+    console.log(`${SERVER_NAME} v${VERSION} listening on ${mcpUrl(host, bound.port)}`);
+    const exposure = exposureWarning(bound.address);
+    if (exposure) console.error(exposure);
   });
 
   const shutdown = gracefulShutdown(app);
