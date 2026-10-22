@@ -63,6 +63,12 @@ output fields are the public API: removing or renaming any of them is a breaking
   `http` or `https` (anything else means `http`), a `Host` that is not a valid host and port falls
   back to `localhost`, `X-Forwarded-Host` is ignored, and the page is sent with
   `Vary: Host, X-Forwarded-Proto` so a shared cache cannot serve one client's origin to everyone.
+- Docs: running behind a reverse proxy. The proxy must pass the original `Host` header (nginx
+  `proxy_set_header Host $host;`, Apache `ProxyPreserveHost On`) and should set
+  `X-Forwarded-Proto`; otherwise `GET /` advertises the internal URL and, with a named upstream such
+  as `app:8787`, `/mcp` answers 403 even with `ALLOWED_HOSTS` set. README "Behind a reverse proxy"
+  and a connector-guide troubleshooting row
+  ([#28](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/28)).
 
 ## [0.1.0] - 2026-10-21
 

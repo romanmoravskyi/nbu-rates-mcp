@@ -121,7 +121,8 @@ npx @modelcontextprotocol/inspector --cli http://localhost:8787/mcp --method too
 
 It is a single stateless Node process with no database, so it runs on any Node host or container
 (Docker, Fly.io, Railway, a VPS). Put it behind a reverse proxy or platform that terminates HTTPS,
-and set `ALLOWED_HOSTS` to the public hostname.
+and set `ALLOWED_HOSTS` to the public hostname. A reverse proxy must pass the original `Host`
+header; see [Behind a reverse proxy](#behind-a-reverse-proxy).
 
 ### Docker
 
@@ -143,6 +144,48 @@ HOST=0.0.0.0 PORT=8787 ALLOWED_HOSTS=nbu.example.com node dist/index.js
 ```
 
 Most platforms set `PORT` for you; set `HOST=0.0.0.0` so the process accepts outside traffic.
+
+### Behind a reverse proxy
+
+The server reads the `Host` header for two things: the `/mcp` Host check (`ALLOWED_HOSTS`) and
+the URL shown on `GET /`. `X-Forwarded-Host` is ignored, so the proxy must pass the original
+`Host` header, and it should set `X-Forwarded-Proto` so the home page shows `https://`. A proxy
+that rewrites `Host` to its upstream address (`127.0.0.1:8787`, or a container name such as
+`app:8787`) makes `GET /` advertise that internal URL, and with a named upstream every `/mcp`
+request fails with 403 "Host or Origin not allowed", even with `ALLOWED_HOSTS` set to the public
+name.
+
+nginx (rewrites `Host` to the `proxy_pass` address unless told otherwise):
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;  # $host drops the port; use $http_host on a non-default port
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;  # /mcp answers with text/event-stream
+}
+```
+
+Apache, in the HTTPS (`:443`) virtual host (`ProxyPreserveHost` is `Off` by default;
+`RequestHeader` needs `mod_headers`):
+
+```apache
+ProxyPreserveHost On
+RequestHeader set X-Forwarded-Proto "https"
+ProxyPass        / http://127.0.0.1:8787/
+ProxyPassReverse / http://127.0.0.1:8787/
+```
+
+Caddy's `reverse_proxy` to an `http://` upstream passes `Host` unchanged and sets
+`X-Forwarded-Proto` by default, and Traefik passes `Host` by default (`passHostHeader: true`).
+
+`ALLOWED_HOSTS` must list the hostname the server actually receives in `Host`. When the proxy
+preserves `Host`, that is your public hostname (`ALLOWED_HOSTS=nbu.example.com`); you do not need
+to add the upstream name. Browser clients that send an `Origin` need that hostname listed too.
+If the proxy rewrites `Host` to `127.0.0.1`, requests pass the Host check (loopback is always
+allowed), so the DNS-rebinding check can no longer tell proxied requests from local ones (only a
+browser `Origin` is still checked), and `GET /` shows the internal URL. Prefer preserving `Host`.
 
 ## Caching and rate limits
 

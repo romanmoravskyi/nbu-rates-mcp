@@ -93,7 +93,9 @@ npx @modelcontextprotocol/inspector --cli http://localhost:8787/mcp \
 1. Run the server on any Node host or container (Docker, Fly.io, Railway, a VPS); see
    [Hosting in the README](../README.md#hosting). Terminate HTTPS in front of it (the platform's
    TLS, or a reverse proxy such as Caddy or nginx) and set `ALLOWED_HOSTS` to your public
-   hostname, for example `ALLOWED_HOSTS=nbu.example.com`.
+   hostname, for example `ALLOWED_HOSTS=nbu.example.com`. The proxy must pass the original `Host`
+   header (nginx and Apache do not by default); see
+   [Behind a reverse proxy](../README.md#behind-a-reverse-proxy).
 2. Check `https://nbu.example.com/health` returns `{"ok":true}`.
 3. On [claude.ai](https://claude.ai): **Settings → Connectors → Add custom connector**, name
    `NBU rates`, URL `https://nbu.example.com/mcp`, leave OAuth empty.
@@ -111,4 +113,5 @@ On Team and Enterprise plans an owner may need to add the connector for the orga
 | Tool error "not published yet" | You asked for tomorrow before NBU set the rates (about 15:30 Kyiv time). |
 | Tool error "does not publish an official rate" | NBU does not quote that currency. Call `list_rates` to see the list. |
 | HTTP 403 "Host or Origin not allowed" | Use `localhost` or `127.0.0.1`, or add your hostname to `ALLOWED_HOSTS`; see ADR-001. |
+| HTTP 403 "Host or Origin not allowed" behind nginx or Apache, with `ALLOWED_HOSTS` set | The proxy is sending its upstream address (such as `app:8787`) as `Host`. Make it pass the original `Host` (nginx `proxy_set_header Host $host;`, Apache `ProxyPreserveHost On`; see [Behind a reverse proxy](../README.md#behind-a-reverse-proxy)). Adding the hostname the server receives (such as `app`) to `ALLOWED_HOSTS` also stops the 403, but `GET /` keeps showing the internal URL. |
 | Works locally but not from another machine | The server binds to `127.0.0.1` by default. Set `HOST=0.0.0.0` (the Docker image already does). |
