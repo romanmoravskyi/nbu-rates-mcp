@@ -17,11 +17,17 @@ import { ConfigError, readListenConfig, urlHost } from "./env.js";
 /** Below the Dockerfile's `--timeout=3s`, leaving room for Node to start (about 250 ms in the image). */
 export const HEALTH_TIMEOUT_MS = 2000;
 
+/** Where the server configured by some environment answers /health. */
+export interface HealthTarget {
+  host: string;
+  port: number;
+}
+
 /**
- * The /health URL of a server configured by `env`. Throws ConfigError when it cannot be known.
+ * The address to probe for a server configured by `env`. Throws ConfigError when it cannot be known.
  * `machine` is passed through to readListenConfig (this machine's hostname by default).
  */
-export function healthUrl(env: NodeJS.ProcessEnv, machine?: string): string {
+export function healthTarget(env: NodeJS.ProcessEnv, machine?: string): HealthTarget {
   const { port, host } = readListenConfig(env, machine);
   if (port === 0) {
     throw new ConfigError(
@@ -29,21 +35,27 @@ export function healthUrl(env: NodeJS.ProcessEnv, machine?: string): string {
     );
   }
   // A wildcard bind accepts loopback connections; other hosts are probed where the server listens.
-  const target = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
-  return `http://${urlHost(target)}:${port}/health`;
+  return { host: host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host, port };
+}
+
+/** The probed URL, for messages: IPv6 hosts in brackets. */
+export function healthUrl({ host, port }: HealthTarget): string {
+  return `http://${urlHost(host)}:${port}/health`;
 }
 
 /**
- * GET `url`; resolves to undefined on a 2xx answer, else to a one-line reason. Uses node:http, not
- * fetch, because fetch refuses the Fetch spec's "bad ports" (e.g. 6000, 10080) the server may use.
+ * GET /health on `target`; resolves to undefined on a 2xx answer, else to a one-line reason.
+ * Uses node:http with host/port options rather than fetch or a URL string: fetch refuses the Fetch
+ * spec's "bad ports" (e.g. 6000, 10080), and a URL cannot carry an IPv6 zone ID (fe80::1%eth0).
  */
-export function probe(url: string, timeoutMs = HEALTH_TIMEOUT_MS): Promise<string | undefined> {
+export function probe(target: HealthTarget, timeoutMs = HEALTH_TIMEOUT_MS): Promise<string | undefined> {
+  const url = healthUrl(target);
   return new Promise((resolve) => {
     let req: ClientRequest;
     try {
-      req = get(url, { agent: false }, onResponse);
+      req = get({ ...target, path: "/health", agent: false }, onResponse);
     } catch (error) {
-      // An unusable HOST (e.g. an IPv6 zone ID) makes `get` throw synchronously: report, don't crash.
+      // Invalid options make `get` throw synchronously: report, don't crash.
       resolve(`${url} failed: ${error instanceof Error ? error.message : String(error)}`);
       return;
     }
@@ -65,7 +77,7 @@ export function probe(url: string, timeoutMs = HEALTH_TIMEOUT_MS): Promise<strin
 async function main(): Promise<never> {
   let reason: string | undefined;
   try {
-    reason = await probe(healthUrl(process.env));
+    reason = await probe(healthTarget(process.env));
   } catch (error) {
     if (!(error instanceof ConfigError)) throw error;
     reason = error.message;
