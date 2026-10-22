@@ -19,6 +19,6 @@ RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=build /app/dist ./dist
 USER node
 EXPOSE 8787
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
-  CMD wget -qO- "http://127.0.0.1:${PORT}/health" || exit 1
+# Reads PORT/NBU_MCP_HOST/HOST with the server's own parser (src/healthcheck.ts); PORT=0 is not supported.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s CMD ["node", "dist/healthcheck.js"]
 CMD ["node", "dist/index.js"]

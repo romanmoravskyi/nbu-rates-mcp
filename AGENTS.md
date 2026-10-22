@@ -29,6 +29,7 @@ src/index.ts      process entry: --stdio or MCP_TRANSPORT=stdio; else listens wi
 src/env.ts        pure parsing of PORT/NBU_MCP_HOST/HOST/ALLOWED_HOSTS (warnings returned, not logged); loopback and URL helpers
 src/shutdown.ts   graceful shutdown: stop accepting, drain in-flight requests, grace timer, second signal exits
 src/stdio.ts      StdioServerTransport wiring; logs to stderr only (stdout is the protocol channel)
+src/healthcheck.ts Docker HEALTHCHECK: GET /health at env.ts PORT/host, exit 0/1; runs only as process entry
 src/server.ts     node:http routing for /, /health, /mcp; Host/Origin check; McpServer per request
 src/request.ts    validated reads of request target, Host and X-Forwarded-Proto (routing path, public origin)
 src/tools.ts      zod input schemas, tool handlers, MCP result/error shaping, registerTools()
@@ -46,7 +47,8 @@ Dockerfile        multi-stage node:22-alpine image
 - Format and lint with Biome only (no Prettier/ESLint).
 - Keep each source file under about 150 lines; split by responsibility if one grows.
 - `src/index.ts` is the only module with side effects (it starts listening or connects stdio).
-  Tests import `src/server.ts` and call `createApp()`; `test/stdio.test.ts` spawns the entry.
+  The one exception, `src/healthcheck.ts`, acts only when run as the process entry, so importing
+  it is safe. Tests import `src/server.ts` and call `createApp()`; `test/stdio.test.ts` spawns the entry.
 - In stdio mode never write to stdout except through the transport; use `console.error`.
 - Tool handlers throw `UserError` (bad input, unknown currency, no data yet) or `UpstreamError`
   (NBU down or malformed). `runTool` turns both into `isError: true` results. Never let a tool throw.
