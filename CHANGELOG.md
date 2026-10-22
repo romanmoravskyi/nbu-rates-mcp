@@ -20,6 +20,10 @@ output fields are the public API: removing or renaming any of them is a breaking
 - A warning on stderr at startup when the HTTP server is bound to a non-loopback address (anything
   but `127.0.0.0/8`, `::1` or `localhost`, so also `0.0.0.0` in the Docker image): the server is
   then reachable from other machines and has no authentication.
+- Docs: the README "Hosting" section says the server drains in-flight requests for up to 5 seconds
+  on `SIGTERM`/`SIGINT`, so the host's stop timeout should be above 5 s (Docker's 10 s default is
+  fine; on Fly.io set `kill_timeout` above 5)
+  ([#30](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/30)).
 
 ### Changed
 

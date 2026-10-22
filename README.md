@@ -129,6 +129,10 @@ It is a single stateless Node process with no database, so it runs on any Node h
 and set `ALLOWED_HOSTS` to the public hostname. A reverse proxy must pass the original `Host`
 header; see [Behind a reverse proxy](#behind-a-reverse-proxy).
 
+On `SIGTERM` or `SIGINT` the HTTP server stops accepting connections and gives in-flight requests
+up to 5 seconds to finish (anything still running then is cut off), so set the host's stop timeout
+above 5 s. Docker's default (10 s) is enough; on Fly.io set `kill_timeout` above 5 (default 5 s).
+
 ### Docker
 
 ```bash
