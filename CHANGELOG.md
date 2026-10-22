@@ -83,6 +83,14 @@ output fields are the public API: removing or renaming any of them is a breaking
 - The startup log brackets IPv6 hosts, e.g. `http://[::1]:8787/mcp` instead of `http://::1:8787/mcp`
   ([#31](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/31)). A bracketed bind address such
   as `NBU_MCP_HOST=[::1]` is now accepted instead of failing with `ENOTFOUND`.
+- The Docker `HEALTHCHECK` now runs `node dist/healthcheck.js`, which reads `PORT` and
+  `NBU_MCP_HOST`/`HOST` with the server's own parser, so a blank or padded `PORT` (`PORT=`,
+  `PORT=" 8080 "`) or an IPv6 host such as `NBU_MCP_HOST=::1` no longer marks a working container
+  unhealthy. It probes loopback for `0.0.0.0`/`::` (the image sets `NBU_MCP_HOST=0.0.0.0`) and the
+  bound address otherwise, so it cannot tell when the server is unreachable from outside the
+  container (for example `NBU_MCP_HOST=127.0.0.1`, or a blank one). `PORT=0` (random port) is not
+  supported with the image's health check and reports unhealthy
+  ([#29](https://github.com/romanmoravskyi/nbu-rates-mcp/issues/29)).
 
 ## [0.1.0] - 2026-10-21
 
