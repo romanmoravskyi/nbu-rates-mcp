@@ -1,6 +1,6 @@
 {
   "name": "nbu-rates-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Self-hosted MCP server for official NBU (National Bank of Ukraine) exchange rates, in plain Node.js",
   "private": true,
   "type": "module",
