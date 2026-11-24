@@ -7,6 +7,8 @@ output fields are the public API: removing or renaming any of them is a breaking
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-25
+
 ### Added
 
 - stdio transport: `node dist/index.js --stdio` (or `MCP_TRANSPORT=stdio`) for clients that
@@ -116,5 +118,6 @@ output fields are the public API: removing or renaming any of them is a breaking
 - Multi-stage `node:22-alpine` Dockerfile.
 - Vitest suite with a mocked upstream; CI and Dependabot configuration.
 
-[Unreleased]: https://github.com/romanmoravskyi/nbu-rates-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/romanmoravskyi/nbu-rates-mcp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/romanmoravskyi/nbu-rates-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/romanmoravskyi/nbu-rates-mcp/releases/tag/v0.1.0
